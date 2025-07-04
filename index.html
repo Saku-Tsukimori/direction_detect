@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>移動方向と座標の表示</title>
+  <style>
+    body { font-family: sans-serif; }
+    #log { margin-top: 1em; }
+    .coords { margin: 0.5em 0; }
+  </style>
+</head>
+<body>
+  <h1>移動方向と現在位置</h1>
+  <p class="coords" id="prev">前回: 未取得</p>
+  <p class="coords" id="curr">現在: 未取得</p>
+  <p class="coords" id="direction">方向: 未測定</p>
+
+  <script>
+    let lastPos = null;
+
+    function haversine(lat1, lon1, lat2, lon2) {
+      const R = 6371000; // 地球半径[m]
+      const toRad = Math.PI / 180;
+      const dLat = (lat2 - lat1) * toRad;
+      const dLon = (lon2 - lon1) * toRad;
+      const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(lat1 * toRad) * Math.cos(lat2 * toRad) *
+                Math.sin(dLon / 2) ** 2;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function getAzimuth(lat1, lon1, lat2, lon2) {
+      const toRad = Math.PI / 180;
+      const toDeg = 180 / Math.PI;
+      const dLon = (lon2 - lon1) * toRad;
+      const φ1 = lat1 * toRad;
+      const φ2 = lat2 * toRad;
+      const y = Math.sin(dLon) * Math.cos(φ2);
+      const x = Math.cos(φ1) * Math.sin(φ2) -
+                Math.sin(φ1) * Math.cos(φ2) * Math.cos(dLon);
+      const θ = Math.atan2(y, x);
+      return (θ * toDeg + 360) % 360;
+    }
+
+    function getCompassDirection(deg) {
+      if (deg < 22.5 || deg >= 337.5) return "北";
+      if (deg < 67.5) return "北東";
+      if (deg < 112.5) return "東";
+      if (deg < 157.5) return "南東";
+      if (deg < 202.5) return "南";
+      if (deg < 247.5) return "南西";
+      if (deg < 292.5) return "西";
+      if (deg < 337.5) return "北西";
+    }
+
+    function updatePosition() {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        document.getElementById('curr').textContent =
+          `現在: (${lat.toFixed(6)}, ${lon.toFixed(6)})`;
+
+        if (lastPos) {
+          document.getElementById('prev').textContent =
+            `前回: (${lastPos.lat.toFixed(6)}, ${lastPos.lon.toFixed(6)})`;
+
+          const distance = haversine(lastPos.lat, lastPos.lon, lat, lon);
+          if (distance >= 2) {
+            const angle = getAzimuth(lastPos.lat, lastPos.lon, lat, lon);
+            const dir = getCompassDirection(angle);
+            document.getElementById('direction').textContent =
+              `方向: ${dir}（${angle.toFixed(1)}°）, 距離: ${distance.toFixed(2)}m`;
+          } else {
+            document.getElementById('direction').textContent =
+              `方向: 変化なし（${distance.toFixed(2)}m未満）`;
+          }
+        }
+
+        lastPos = { lat, lon };
+      }, (err) => {
+        document.getElementById('curr').textContent =
+          '位置情報の取得に失敗しました: ' + err.message;
+      });
+    }
+
+    // 最初の取得と10秒ごとの更新
+    updatePosition();
+    setInterval(updatePosition, 10000);
+  </script>
+</body>
+</html>
