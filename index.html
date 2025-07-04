@@ -2,18 +2,17 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>移動方向と座標の表示</title>
+  <title>移動方向とGPS表示</title>
   <style>
-    body { font-family: sans-serif; }
-    #log { margin-top: 1em; }
+    body { font-family: sans-serif; line-height: 1.6; padding: 1em; }
     .coords { margin: 0.5em 0; }
   </style>
 </head>
 <body>
-  <h1>移動方向と現在位置</h1>
-  <p class="coords" id="prev">前回: 未取得</p>
-  <p class="coords" id="curr">現在: 未取得</p>
-  <p class="coords" id="direction">方向: 未測定</p>
+  <h1>GPSと移動方向の確認</h1>
+  <p class="coords" id="prev">前回座標: 未取得</p>
+  <p class="coords" id="curr">現在座標: 未取得</p>
+  <p class="coords" id="direction">移動方向: 未取得</p>
 
   <script>
     let lastPos = null;
@@ -58,33 +57,35 @@
       navigator.geolocation.getCurrentPosition((pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        document.getElementById('curr').textContent =
-          `現在: (${lat.toFixed(6)}, ${lon.toFixed(6)})`;
+        document.getElementById("curr").textContent =
+          `現在座標: (${lat.toFixed(6)}, ${lon.toFixed(6)})`;
 
         if (lastPos) {
-          document.getElementById('prev').textContent =
-            `前回: (${lastPos.lat.toFixed(6)}, ${lastPos.lon.toFixed(6)})`;
+          const prevLat = lastPos.lat;
+          const prevLon = lastPos.lon;
+          document.getElementById("prev").textContent =
+            `前回座標: (${prevLat.toFixed(6)}, ${prevLon.toFixed(6)})`;
 
-          const distance = haversine(lastPos.lat, lastPos.lon, lat, lon);
+          const distance = haversine(prevLat, prevLon, lat, lon);
           if (distance >= 2) {
-            const angle = getAzimuth(lastPos.lat, lastPos.lon, lat, lon);
-            const dir = getCompassDirection(angle);
-            document.getElementById('direction').textContent =
-              `方向: ${dir}（${angle.toFixed(1)}°）, 距離: ${distance.toFixed(2)}m`;
+            const azimuth = getAzimuth(prevLat, prevLon, lat, lon);
+            const dir = getCompassDirection(azimuth);
+            document.getElementById("direction").textContent =
+              `移動方向: ${dir}（${azimuth.toFixed(1)}°）, 距離: ${distance.toFixed(2)}m`;
           } else {
-            document.getElementById('direction').textContent =
-              `方向: 変化なし（${distance.toFixed(2)}m未満）`;
+            document.getElementById("direction").textContent =
+              `移動方向: 変化なし（${distance.toFixed(2)}m未満）`;
           }
         }
 
         lastPos = { lat, lon };
       }, (err) => {
-        document.getElementById('curr').textContent =
-          '位置情報の取得に失敗しました: ' + err.message;
+        document.getElementById("curr").textContent =
+          `位置情報の取得に失敗: ${err.message}`;
       });
     }
 
-    // 最初の取得と10秒ごとの更新
+    // 初回と10秒ごとの更新
     updatePosition();
     setInterval(updatePosition, 10000);
   </script>
